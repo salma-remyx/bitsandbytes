@@ -3,7 +3,7 @@ fork: salma-remyx/bitsandbytes
 observed_landing_zones:
 - path: bitsandbytes/nn/
   shape_tags:
-  - unclassified
+  - library-shape-public-api
   confirmed_by:
   - arxiv: 2608.07019v1
     mode: Mode 2 (adapted port)
@@ -12,7 +12,14 @@ observed_landing_zones:
       \ quantized via .to(device)/.cuda(); additionally exported as public libra"
     branch: requant-fixed-grid-discrete-refinement-for-post-training-qua
     timestamp: '2026-08-14T17:05:28Z'
-  last_observed: '2026-08-14T17:05:28Z'
+  - arxiv: 2608.11045v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: Params4bit._quantize in bitsandbytes/nn/modules.py (invoked
+      via refine_midpoint_rounding whenever a Linear4bit is constructed with midpoint_tolerance
+      set); Linear4bit.__init__ exposes the new public k
+    branch: reround-reconstructive-rounding-to-resolve-midpoint-ambiguit
+    timestamp: '2026-08-14T22:31:35Z'
+  last_observed: '2026-08-14T22:31:35Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-08-14T17:05:28Z'
+last_updated: '2026-08-14T22:31:35Z'
