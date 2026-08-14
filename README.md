@@ -240,3 +240,14 @@ If you found this library useful, please consider citing our work:
   year={2022}
 }
 ```
+
+### 4-bit Midpoint Rounding
+
+```bibtex
+@article{reround2026,
+  title={ReRound: Reconstructive Rounding to Resolve Midpoint Ambiguity in Calibration-Free LLM Quantization},
+  author={ReRound Authors},
+  journal={arXiv preprint arXiv:2608.11045},
+  year={2026}
+}
+```

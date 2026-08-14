@@ -17,6 +17,8 @@ from bitsandbytes.functional import (
     _convert_weight_packed_for_cpu_inverse,
     has_avx512bf16,
 )
+from bitsandbytes.nn import midpoint_rounding
+from bitsandbytes.nn.midpoint_rounding import quant_type_uses_fixed_grid
 from bitsandbytes.optim import GlobalOptimManager
 from bitsandbytes.utils import INVERSE_LINEAR_8BIT_WEIGHTS_FORMAT_MAPPING, OutlierTracer
 
@@ -222,6 +224,7 @@ class Params4bit(torch.nn.Parameter):
         quant_storage: torch.dtype = torch.uint8,
         module: Optional["Linear4bit"] = None,
         bnb_quantized: bool = False,
+        midpoint_tolerance: Optional[float | str] = None,
         **kwargs,
     ) -> "Params4bit":
         if data is None:
@@ -239,6 +242,7 @@ class Params4bit(torch.nn.Parameter):
         self.bnb_quantized = bnb_quantized
         self.data = data
         self.module = module
+        self.midpoint_tolerance = midpoint_tolerance
         return self
 
     def __getstate__(self):
@@ -257,6 +261,7 @@ class Params4bit(torch.nn.Parameter):
         self.quant_storage = state["quant_storage"]
         self.bnb_quantized = state["bnb_quantized"]
         self.module = state["module"]
+        self.midpoint_tolerance = state.get("midpoint_tolerance")
 
     # Properties that proxy QuantState attributes for FSDP state_dict traversal.
     # FSDP's _get_fqns() resolves dotted FQN keys via getattr, e.g. "weight.absmax"
@@ -387,6 +392,11 @@ class Params4bit(torch.nn.Parameter):
             quant_type=self.quant_type,
             quant_storage=self.quant_storage,
         )
+        midpoint_tolerance = getattr(self, "midpoint_tolerance", None)
+        if midpoint_tolerance is not None and quant_type_uses_fixed_grid(self.quant_type):
+            w_4bit, quant_state = midpoint_rounding.refine_midpoint_rounding(
+                w, quant_state, tolerance=midpoint_tolerance
+            )
         self.data = w_4bit
         self.quant_state = quant_state
         if self.module is not None:
@@ -544,6 +554,7 @@ class Linear4bit(nn.Linear):
         quant_type="fp4",
         quant_storage=torch.uint8,
         device=None,
+        midpoint_tolerance=None,
     ):
         """
         Initialize Linear4bit class.
@@ -555,6 +566,12 @@ class Linear4bit(nn.Linear):
                 Number of output features of the linear layer.
             bias (`bool`, defaults to `True`):
                 Whether the linear class uses the bias term as well.
+            midpoint_tolerance (`float` or `str`, defaults to `None`):
+                If set, re-round weights near a grid midpoint at quantization
+                time instead of plain round-to-nearest (see
+                `bitsandbytes.nn.midpoint_rounding`). `None` (the default)
+                keeps standard RTN; `"select"` sweeps the tolerance and keeps
+                the candidate with the best spectral match to the original.
         """
         super().__init__(input_features, output_features, bias, device)
         self.weight = Params4bit(
@@ -564,6 +581,7 @@ class Linear4bit(nn.Linear):
             quant_type=quant_type,
             quant_storage=quant_storage,
             module=self,
+            midpoint_tolerance=midpoint_tolerance,
         )
         # self.persistent_buffers = []  # TODO consider as way to save quant state
         self.compute_dtype = compute_dtype
