@@ -1,0 +1,18 @@
+schema_version: 1
+fork: salma-remyx/bitsandbytes
+observed_landing_zones:
+- path: bitsandbytes/nn/
+  shape_tags:
+  - unclassified
+  confirmed_by:
+  - arxiv: 2608.07019v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "Params4bit._quantize in bitsandbytes/nn/modules.py:395-397\
+      \ \u2014 the standard path every Linear4bit/Embedding4bit weight takes when\
+      \ quantized via .to(device)/.cuda(); additionally exported as public libra"
+    branch: requant-fixed-grid-discrete-refinement-for-post-training-qua
+    timestamp: '2026-08-14T17:05:28Z'
+  last_observed: '2026-08-14T17:05:28Z'
+rejected_shapes: []
+coordination_signals: []
+last_updated: '2026-08-14T17:05:28Z'
