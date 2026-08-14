@@ -17,3 +17,4 @@ from .modules import (
     Params4bit,
     StableEmbedding,
 )
+from .quant_refine import refine_4bit_weights

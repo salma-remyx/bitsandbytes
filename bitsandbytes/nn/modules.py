@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 import copy
 import logging
+import os
 from typing import Any, Optional, TypeVar, Union, overload
 
 import torch
@@ -17,6 +18,7 @@ from bitsandbytes.functional import (
     _convert_weight_packed_for_cpu_inverse,
     has_avx512bf16,
 )
+from bitsandbytes.nn.quant_refine import refine_4bit_weights
 from bitsandbytes.optim import GlobalOptimManager
 from bitsandbytes.utils import INVERSE_LINEAR_8BIT_WEIGHTS_FORMAT_MAPPING, OutlierTracer
 
@@ -387,6 +389,12 @@ class Params4bit(torch.nn.Parameter):
             quant_type=self.quant_type,
             quant_storage=self.quant_storage,
         )
+        # Optional fixed-grid refinement pass (ReQuant-style): revisit the
+        # discrete code assignments now that an executable quantized weight
+        # exists. Off unless BNB_REFINE_4BIT is set to a positive integer.
+        refine_sweeps = int(os.environ.get("BNB_REFINE_4BIT", "0") or 0)
+        if refine_sweeps > 0 and not self.compress_statistics:
+            w_4bit, quant_state = refine_4bit_weights(w_4bit, quant_state, w, num_sweeps=refine_sweeps)
         self.data = w_4bit
         self.quant_state = quant_state
         if self.module is not None:
