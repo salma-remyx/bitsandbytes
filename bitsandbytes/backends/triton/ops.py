@@ -1,9 +1,13 @@
+import logging
 from collections.abc import Sequence
 from typing import Optional
 
 import torch
+from triton.runtime.errors import OutOfResources, PTXASError
 
-from . import kernels_4bit, kernels_8bit_quant, kernels_optim
+from . import gemm_splitk, kernels_4bit, kernels_8bit_quant, kernels_optim
+
+logger = logging.getLogger(__name__)
 
 # currently codes unused, kept for reference
 # Should be the same for quant/dequant
@@ -153,6 +157,14 @@ def gemv_4bit(
 ) -> torch.Tensor:
     if B.dtype != torch.uint8:
         B = B.squeeze().view(torch.uint8).unsqueeze(1)
+
+    # Fused dequant-in-GEMM with SplitK: skips materializing the full
+    # dequantized weight. Falls back to the unfused path below if Triton
+    # cannot compile or launch the kernel for this device.
+    try:
+        return gemm_splitk.gemm_4bit_splitk(A, B, shapeB, absmax, code, blocksize)
+    except (OutOfResources, PTXASError) as e:  # pragma: no cover - non-Triton devices
+        logger.warning("gemm_4bit_splitk failed (%s); falling back to unfused dequant + linear", e)
 
     B_dq_triton = torch.empty(shapeB, dtype=A.dtype, device=A.device)
 
