@@ -124,6 +124,7 @@ def replace_linear(
     skip_modules=("lm_head",),
     copy_weights=False,
     post_processing_function=None,
+    head_quantizer=None,
 ):
     """
     Replace linear modules with a new Linear module.
@@ -140,26 +141,48 @@ def replace_linear(
         post_processing_function (`str`):
             A function name of the replacement linear class that is called
             after processing.
+        head_quantizer (`Callable`, *optional*):
+            Called as ``head_quantizer(in_features, weight, bias)`` for each
+            module in ``skip_modules`` that is a `torch.nn.Linear`, and must
+            return the replacement module. This is the hook for quantizing the
+            softmax head instead of leaving it in high precision -- pass
+            `bitsandbytes.nn.class_rate_head_quantizer` to do so class-aware.
     """
     for name, module in model.named_children():
         if len(list(module.children())) > 0:
-            replace_linear(module, linear_replacement, skip_modules, copy_weights, post_processing_function)
-
-        if isinstance(module, torch.nn.Linear) and name not in skip_modules:
-            old_module = model._modules[name]
-            model._modules[name] = linear_replacement(
-                module.in_features,
-                module.out_features,
-                module.bias is not None,
+            replace_linear(
+                model=module,
+                linear_replacement=linear_replacement,
+                skip_modules=skip_modules,
+                copy_weights=copy_weights,
+                post_processing_function=post_processing_function,
+                head_quantizer=head_quantizer,
             )
-            if copy_weights:
-                model._modules[name].weight = old_module.weight
-                model._modules[name].bias = old_module.bias
 
-            if post_processing_function is not None:
-                func = getattr(module, post_processing_function, None)
-                if func is not None:
-                    func(module)
+        if isinstance(module, torch.nn.Linear):
+            if name in skip_modules and head_quantizer is not None:
+                model._modules[name] = head_quantizer(
+                    module.in_features,
+                    module.weight,
+                    module.bias,
+                )
+                continue
+
+            if name not in skip_modules:
+                old_module = model._modules[name]
+                model._modules[name] = linear_replacement(
+                    module.in_features,
+                    module.out_features,
+                    module.bias is not None,
+                )
+                if copy_weights:
+                    model._modules[name].weight = old_module.weight
+                    model._modules[name].bias = old_module.bias
+
+                if post_processing_function is not None:
+                    func = getattr(module, post_processing_function, None)
+                    if func is not None:
+                        func(module)
     return model
 
 

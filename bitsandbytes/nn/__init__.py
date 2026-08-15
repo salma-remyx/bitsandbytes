@@ -17,3 +17,12 @@ from .modules import (
     Params4bit,
     StableEmbedding,
 )
+from .rate_allocation import (
+    ClassRateHeadLinear,
+    GroupedQuantState,
+    allocate_class_blocksizes,
+    class_rate_head_quantizer,
+    dequantize_head_classwise,
+    quantize_head_classwise,
+    zipf_frequencies,
+)

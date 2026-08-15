@@ -16,6 +16,8 @@
 
 The library includes quantization primitives for 8-bit & 4-bit operations, through `bitsandbytes.nn.Linear8bitLt` and `bitsandbytes.nn.Linear4bit` and 8-bit optimizers through `bitsandbytes.optim` module.
 
+The softmax output head is normally left in high precision, which can hold 15-30% of a small model's parameters. `bitsandbytes.nn.class_rate_head_quantizer` quantizes it class-aware — fine grids for frequent tokens, coarse grids for rare ones — using the existing blockwise 4-bit path. Pass it as `head_quantizer` to `bitsandbytes.utils.replace_linear` (adapted from [SoftWater](https://arxiv.org/abs/2608.12026)).
+
 ## System Requirements
 bitsandbytes has the following minimum requirements for all platforms:
 
