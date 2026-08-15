@@ -19,7 +19,14 @@ observed_landing_zones:
       set); Linear4bit.__init__ exposes the new public k
     branch: reround-reconstructive-rounding-to-resolve-midpoint-ambiguit
     timestamp: '2026-08-14T22:31:35Z'
-  last_observed: '2026-08-14T22:31:35Z'
+  - arxiv: 2608.12026v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "bitsandbytes.utils.replace_linear \u2014 the pre-existing\
+      \ model-conversion utility; its new head_quantizer parameter invokes class_rate_head_quantizer\
+      \ on each skip_modules Linear (utils.py:124), and the ne"
+    branch: softwater-class-aware-rate-allocation-for-softmax-quantizati
+    timestamp: '2026-08-15T19:25:54Z'
+  last_observed: '2026-08-15T19:25:54Z'
 - path: bitsandbytes/backends/triton/
   shape_tags:
   - unclassified
@@ -40,4 +47,4 @@ rejected_shapes:
   - arxiv: 2608.09595v1
     timestamp: '2026-08-15T10:52:31Z'
 coordination_signals: []
-last_updated: '2026-08-15T10:52:31Z'
+last_updated: '2026-08-15T19:25:54Z'
