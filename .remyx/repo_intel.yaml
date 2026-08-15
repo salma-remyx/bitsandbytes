@@ -20,6 +20,18 @@ observed_landing_zones:
     branch: reround-reconstructive-rounding-to-resolve-midpoint-ambiguit
     timestamp: '2026-08-14T22:31:35Z'
   last_observed: '2026-08-14T22:31:35Z'
+- path: bitsandbytes/backends/triton/
+  shape_tags:
+  - unclassified
+  confirmed_by:
+  - arxiv: 2402.00025v2
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "bitsandbytes/backends/triton/ops.py:gemv_4bit \u2014 which\
+      \ is registered as the xpu kernel for torch.ops.bitsandbytes.gemv_4bit (backends/xpu/ops.py:301)\
+      \ and invoked from the Linear4bit forward at bitsandb"
+    branch: accelerating-a-triton-fused-kernel-for-w4a16-quantized-infer
+    timestamp: '2026-08-15T05:03:51Z'
+  last_observed: '2026-08-15T05:03:51Z'
 rejected_shapes: []
 coordination_signals: []
-last_updated: '2026-08-14T22:31:35Z'
+last_updated: '2026-08-15T05:03:51Z'
