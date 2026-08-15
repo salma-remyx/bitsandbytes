@@ -32,6 +32,12 @@ observed_landing_zones:
     branch: accelerating-a-triton-fused-kernel-for-w4a16-quantized-infer
     timestamp: '2026-08-15T05:03:51Z'
   last_observed: '2026-08-15T05:03:51Z'
-rejected_shapes: []
+rejected_shapes:
+- shape_tag: null
+  reason_code: null
+  reason_summary: ''
+  observed:
+  - arxiv: 2608.09595v1
+    timestamp: '2026-08-15T10:52:31Z'
 coordination_signals: []
-last_updated: '2026-08-15T05:03:51Z'
+last_updated: '2026-08-15T10:52:31Z'
