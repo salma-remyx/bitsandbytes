@@ -245,6 +245,8 @@ class Params4bit(torch.nn.Parameter):
         state = self.__dict__.copy()
         state["data"] = self.data
         state["requires_grad"] = self.requires_grad
+        state["lora_rank"] = getattr(self, "lora_rank", 0)
+        state["lora_num_iter"] = getattr(self, "lora_num_iter", 1)
         return state
 
     def __setstate__(self, state):
@@ -257,6 +259,9 @@ class Params4bit(torch.nn.Parameter):
         self.quant_storage = state["quant_storage"]
         self.bnb_quantized = state["bnb_quantized"]
         self.module = state["module"]
+        # LoRA-aware init settings are optional; older states never carried them.
+        self.lora_rank = state.get("lora_rank", 0)
+        self.lora_num_iter = state.get("lora_num_iter", 1)
 
     # Properties that proxy QuantState attributes for FSDP state_dict traversal.
     # FSDP's _get_fqns() resolves dotted FQN keys via getattr, e.g. "weight.absmax"
@@ -344,6 +349,8 @@ class Params4bit(torch.nn.Parameter):
         new_instance.__setstate__(state)
         new_instance.quant_state = copy.deepcopy(state["quant_state"])
         new_instance.data = copy.deepcopy(state["data"])
+        if "lora_adapters" in state:
+            new_instance.lora_adapters = copy.deepcopy(state["lora_adapters"])
         return new_instance
 
     def __copy__(self):
@@ -380,13 +387,24 @@ class Params4bit(torch.nn.Parameter):
 
     def _quantize(self, device):
         w = self.data.contiguous().to(device)
-        w_4bit, quant_state = bnb.functional.quantize_4bit(
-            w,
-            blocksize=self.blocksize,
-            compress_statistics=self.compress_statistics,
-            quant_type=self.quant_type,
-            quant_storage=self.quant_storage,
-        )
+        quant_kwargs = {
+            "blocksize": self.blocksize,
+            "compress_statistics": self.compress_statistics,
+            "quant_type": self.quant_type,
+            "quant_storage": self.quant_storage,
+        }
+        if getattr(self, "lora_rank", 0):
+            # LoRA-aware init: fold the rank-r residual into adapters rather than
+            # leaving it in the frozen quantized weight. See nn.lora_aware_quant.
+            w_4bit, quant_state, lora_a, lora_b = bnb.nn.lora_aware_quantize_4bit(
+                w,
+                lora_rank=self.lora_rank,
+                num_iter=getattr(self, "lora_num_iter", 1),
+                **quant_kwargs,
+            )
+            self.lora_adapters = (lora_a, lora_b)
+        else:
+            w_4bit, quant_state = bnb.functional.quantize_4bit(w, **quant_kwargs)
         self.data = w_4bit
         self.quant_state = quant_state
         if self.module is not None:
@@ -440,6 +458,11 @@ class Params4bit(torch.nn.Parameter):
                 quant_storage=self.quant_storage,
                 bnb_quantized=self.bnb_quantized,
             )
+            # A LoRA-aware parameter moving between devices keeps its adapters.
+            if getattr(self, "lora_rank", 0):
+                new_param.lora_rank = self.lora_rank
+                new_param.lora_num_iter = self.lora_num_iter
+                new_param.lora_adapters = tuple(a.to(device=device) for a in self.lora_adapters)
 
             return new_param
 
@@ -510,6 +533,11 @@ class Linear4bit(nn.Linear):
     In order to quantize a linear layer one should first load the original fp16 / bf16 weights into
     the Linear4bit module, then call `quantized_module.to("cuda")` to quantize the fp16 / bf16 weights.
 
+    Passing `lora_rank=r` makes the subsequent quantization LoRA-aware: the quantized weight is
+    fitted jointly with rank-r adapters covering the quantization residual, and those adapters are
+    left on the parameter as `weight.lora_adapters` `(A, B)` to attach and train instead of a random
+    LoRA init. See `bitsandbytes.nn.lora_aware_quant`.
+
     Example:
 
     ```python
@@ -544,6 +572,8 @@ class Linear4bit(nn.Linear):
         quant_type="fp4",
         quant_storage=torch.uint8,
         device=None,
+        lora_rank: Optional[int] = None,
+        lora_num_iter: int = 1,
     ):
         """
         Initialize Linear4bit class.
@@ -555,6 +585,21 @@ class Linear4bit(nn.Linear):
                 Number of output features of the linear layer.
             bias (`bool`, defaults to `True`):
                 Whether the linear class uses the bias term as well.
+            compute_dtype (`torch.dtype`, *optional*):
+                The dtype to compute the output in.
+            compress_statistics (`bool`, *optional*, defaults to `True`):
+                Whether to additionally quantize the absmax values.
+            quant_type (`str`, *optional*, defaults to `"fp4"`):
+                The quantization format to use: `nf4` or `fp4`.
+            quant_storage (`torch.dtype`, *optional*, defaults to `torch.uint8`):
+                The dtype of the tensor used to store the quantized result.
+            device (`torch.device`, *optional*):
+                The device to create the layer on.
+            lora_rank (`int`, *optional*):
+                If set, the weight is quantized LoRA-aware with adapters of this rank
+                (see `bitsandbytes.nn.lora_aware_quantize_4bit`).
+            lora_num_iter (`int`, *optional*, defaults to `1`):
+                Number of alternating quantize/SVD steps for the LoRA-aware init.
         """
         super().__init__(input_features, output_features, bias, device)
         self.weight = Params4bit(
@@ -565,6 +610,9 @@ class Linear4bit(nn.Linear):
             quant_storage=quant_storage,
             module=self,
         )
+        if lora_rank is not None:
+            self.weight.lora_rank = lora_rank
+            self.weight.lora_num_iter = lora_num_iter
         # self.persistent_buffers = []  # TODO consider as way to save quant state
         self.compute_dtype = compute_dtype
         self.compute_type_is_set = compute_dtype is not None

@@ -17,3 +17,4 @@ from .modules import (
     Params4bit,
     StableEmbedding,
 )
+from .lora_aware_quant import lora_aware_quantize_4bit

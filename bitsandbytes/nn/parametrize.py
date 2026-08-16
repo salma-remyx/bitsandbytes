@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.utils.parametrize as P
 
 from .. import functional as F
+from .lora_aware_quant import lora_aware_quantize_4bit
 
 
 class Bnb4bitParametrization(nn.Module):
@@ -65,6 +66,7 @@ def replace_parameter_4bit(
     compress_statistics: bool = False,
     quant_type: Literal["nf4", "fp4"] = "nf4",
     blocksize: Optional[int] = None,
+    lora_rank: Optional[int] = None,
 ):
     """
     Replace a module parameter with a 4-bit quantized version using parametrization.
@@ -93,6 +95,10 @@ def replace_parameter_4bit(
             The quantization format to use.
         blocksize (`int`, *optional*, defaults to `None`):
             The block size for quantization. If None, uses the default block size.
+        lora_rank (`int`, *optional*):
+            If set, quantize LoRA-aware and attach the resulting rank-`lora_rank` adapters to
+            the module as `{param_name}_lora_A` / `{param_name}_lora_B`, ready to be trained
+            instead of a random LoRA init (see `bitsandbytes.nn.lora_aware_quant`).
 
     Raises:
         AttributeError: If the module does not have the specified parameter.
@@ -108,12 +114,21 @@ def replace_parameter_4bit(
         raise TypeError(f"Parameter '{param_name}' is not an instance of nn.Parameter")
 
     # Quantize the original parameter.
-    quantized_data, quant_state = F.quantize_4bit(
-        original_param.data,
-        blocksize=blocksize,
-        compress_statistics=compress_statistics,
-        quant_type=quant_type,
-    )
+    if lora_rank is not None:
+        quantized_data, quant_state, lora_a, lora_b = lora_aware_quantize_4bit(
+            original_param.data,
+            lora_rank=lora_rank,
+            blocksize=blocksize,
+            compress_statistics=compress_statistics,
+            quant_type=quant_type,
+        )
+    else:
+        quantized_data, quant_state = F.quantize_4bit(
+            original_param.data,
+            blocksize=blocksize,
+            compress_statistics=compress_statistics,
+            quant_type=quant_type,
+        )
 
     # Replace the parameter with the quantized data.
     setattr(module, param_name, nn.Parameter(quantized_data, requires_grad=False))
@@ -121,6 +136,12 @@ def replace_parameter_4bit(
 
     # Apply a parametrization to the module to handle dequantization.
     P.register_parametrization(module, param_name, Bnb4bitParametrization(quant_state), unsafe=True)
+
+    if lora_rank is not None:
+        # Adapters cover the quantization residual; they are the trainable half of the
+        # joint init and land next to the parameter they correct.
+        setattr(module, f"{param_name}_lora_A", nn.Parameter(lora_a, requires_grad=True))
+        setattr(module, f"{param_name}_lora_B", nn.Parameter(lora_b, requires_grad=True))
 
     # Next, register hooks.
     _register_parametrization_hooks(module, param_name)
