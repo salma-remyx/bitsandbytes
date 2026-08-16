@@ -26,7 +26,12 @@ observed_landing_zones:
       \ on each skip_modules Linear (utils.py:124), and the ne"
     branch: softwater-class-aware-rate-allocation-for-softmax-quantizati
     timestamp: '2026-08-15T19:25:54Z'
-  last_observed: '2026-08-15T19:25:54Z'
+  - arxiv: 2310.08659v4
+    mode: ''
+    call_site_specifics: ''
+    branch: loftq-lora-fine-tuning-aware-quantization-for-large-language
+    timestamp: '2026-08-16T18:47:03Z'
+  last_observed: '2026-08-16T18:47:03Z'
 - path: bitsandbytes/backends/triton/
   shape_tags:
   - unclassified
@@ -47,4 +52,4 @@ rejected_shapes:
   - arxiv: 2608.09595v1
     timestamp: '2026-08-15T10:52:31Z'
 coordination_signals: []
-last_updated: '2026-08-15T19:25:54Z'
+last_updated: '2026-08-16T18:47:03Z'
