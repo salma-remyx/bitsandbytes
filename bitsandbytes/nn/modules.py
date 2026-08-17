@@ -571,6 +571,10 @@ class Linear4bit(nn.Linear):
         self.quant_state = None
         self.quant_storage = quant_storage
         self.support_avx512bf16_for_cpu = has_avx512bf16()
+        # Optional per-language low-rank correction applied on top of the quantized
+        # matmul. None (the default) keeps this layer's behavior unchanged; see
+        # bitsandbytes.nn.language_correction.attach_language_correction.
+        self.language_correction = None
 
     def set_compute_type(self, x):
         if x.dtype in [torch.float32, torch.bfloat16]:
@@ -634,7 +638,18 @@ class Linear4bit(nn.Linear):
                 bias.data = bias.data.to(x.dtype)
             bias = bias.to(self.compute_dtype)
 
-        return bnb.matmul_4bit(x, self.weight, bias=bias, quant_state=quant_state).to(inp_dtype)
+        out = bnb.matmul_4bit(x, self.weight, bias=bias, quant_state=quant_state)
+
+        correction = getattr(self, "language_correction", None)
+        if correction is not None:
+            # Additive delta for the currently active language (None when no
+            # language is selected), applied post-matmul so the quantized
+            # weights and the 4-bit kernel path stay untouched.
+            delta = correction(x)
+            if delta is not None:
+                out = out + delta.to(out.dtype)
+
+        return out.to(inp_dtype)
 
 
 class LinearFP4(Linear4bit):

@@ -2,6 +2,12 @@
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
+from .language_correction import (
+    LanguageCorrection,
+    attach_language_correction,
+    correction_parameter_fraction,
+    language_scope,
+)
 from .modules import (
     Embedding,
     Embedding4bit,
