@@ -31,7 +31,14 @@ observed_landing_zones:
     call_site_specifics: ''
     branch: loftq-lora-fine-tuning-aware-quantization-for-large-language
     timestamp: '2026-08-16T18:47:03Z'
-  last_observed: '2026-08-16T18:47:03Z'
+  - arxiv: 2608.11786v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "Linear4bit.forward (bitsandbytes/nn/modules.py:641-648)\
+      \ \u2014 the pre-existing entry point every 4-bit forward pass goes through;\
+      \ the public API (attach_language_correction, language_scope, LanguageCorrec"
+    branch: language-conditional-dequantization-recovering-what-quantiza
+    timestamp: '2026-08-17T04:43:11Z'
+  last_observed: '2026-08-17T04:43:11Z'
 - path: bitsandbytes/backends/triton/
   shape_tags:
   - unclassified
@@ -52,4 +59,4 @@ rejected_shapes:
   - arxiv: 2608.09595v1
     timestamp: '2026-08-15T10:52:31Z'
 coordination_signals: []
-last_updated: '2026-08-16T18:47:03Z'
+last_updated: '2026-08-17T04:43:11Z'
