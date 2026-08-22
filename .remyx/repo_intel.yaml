@@ -51,6 +51,19 @@ observed_landing_zones:
     branch: accelerating-a-triton-fused-kernel-for-w4a16-quantized-infer
     timestamp: '2026-08-15T05:03:51Z'
   last_observed: '2026-08-15T05:03:51Z'
+- path: bitsandbytes/optim/
+  shape_tags:
+  - library-shape-public-api
+  - registry-add
+  confirmed_by:
+  - arxiv: 2411.15375v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: 'Public library API: the classes are imported and re-exported
+      from bitsandbytes/optim/__init__.py (the diff''s `from .adamz import AdamZ,
+      AdamZ8bit, PagedAdamZ, PagedAdamZ8bit`), the same surface extern'
+    branch: adamz-an-enhanced-optimisation-method-for-neural-network-tra
+    timestamp: '2026-08-22T18:37:26Z'
+  last_observed: '2026-08-22T18:37:26Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -59,4 +72,4 @@ rejected_shapes:
   - arxiv: 2608.09595v1
     timestamp: '2026-08-15T10:52:31Z'
 coordination_signals: []
-last_updated: '2026-08-17T04:43:11Z'
+last_updated: '2026-08-22T18:37:26Z'
