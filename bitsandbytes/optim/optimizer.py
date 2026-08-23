@@ -12,6 +12,7 @@ import warnings
 import torch
 
 import bitsandbytes.functional as F
+from bitsandbytes.optim.lora_preconditioner import precondition_lora_grads, resolve_lora_pairs
 from bitsandbytes.utils import sync_gpu
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class GlobalOptimManager:
         self.optimizer = None
         self.uses_config_override = False
         self.module_weight_config_triple = []
+        self.lora_module_pairs = []
 
     @classmethod
     def get_instance(cls):
@@ -113,6 +115,35 @@ class GlobalOptimManager:
     def register_module_override(self, module, param_name, config):
         self.module_weight_config_triple.append((module, param_name, config))
 
+    def register_lora_pair(self, module, attr_a, attr_b, eps=1e-6):
+        """Register a LoRA factor pair for Riemannian gradient preconditioning.
+
+        The gradients of the two factors are rescaled by the inverse Gram matrix of
+        the *other* factor before each optimizer step (Zhang & Pilanci,
+        https://arxiv.org/abs/2402.02347). Both factors must be optimized by the
+        same optimizer for a pair to take effect.
+
+        Arguments:
+            module (`torch.nn.Module`):
+                The module holding the LoRA factors.
+            attr_a (`str`):
+                Dotted attribute path to the lora_A parameter, shape ``(r, in_features)``.
+            attr_b (`str`):
+                Dotted attribute path to the lora_B parameter, shape ``(out_features, r)``.
+            eps (`float`, defaults to 1e-6):
+                Damping added to the Gram diagonal before inversion.
+
+        Example:
+
+        ```py
+        mng = bnb.optim.GlobalOptimManager.get_instance()
+        for module in model.modules():
+            if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
+                mng.register_lora_pair(module, "lora_A.default.default_weight", "lora_B.default.default_weight")
+        ```
+        """
+        self.lora_module_pairs.append((module, attr_a, attr_b, eps))
+
 
 class Optimizer8bit(torch.optim.Optimizer):
     _FSDP_WRAPPED_QUANT_STATE_KEY = "__bnb_optimizer_quant_state__"
@@ -136,6 +167,7 @@ class Optimizer8bit(torch.optim.Optimizer):
         self.page_mng = F.GlobalPageManager.get_instance()
 
         self.mng = GlobalOptimManager.get_instance()
+        self.lora_pairs = []
         self.non_castable_tensor_keys = {
             "qmap1",
             "qmap2",
@@ -318,7 +350,13 @@ class Optimizer8bit(torch.optim.Optimizer):
         if not self.initialized:
             self.check_overrides()
             self.to_gpu()  # needed for fairseq pure fp16 training
+            self.lora_pairs = resolve_lora_pairs(self.mng.lora_module_pairs, self.param_groups)
             self.initialized = True
+
+        # rescale LoRA factor gradients before the update, so the moments are
+        # estimated from the preconditioned gradient
+        if self.lora_pairs:
+            precondition_lora_grads(self.lora_pairs)
 
         # if self.is_paged: self.page_mng.prefetch_all()
         p = None

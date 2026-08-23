@@ -240,3 +240,14 @@ If you found this library useful, please consider citing our work:
   year={2022}
 }
 ```
+
+### Riemannian Preconditioned LoRA
+
+```bibtex
+@article{zhang2024riemannian,
+  title={Riemannian Preconditioned LoRA for Fine-Tuning Foundation Models},
+  author={Zhang, Fangzhao and Pilanci, Mert},
+  journal={arXiv preprint arXiv:2402.02347},
+  year={2024}
+}
+```
