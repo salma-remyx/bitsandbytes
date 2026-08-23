@@ -12,6 +12,11 @@ import warnings
 import torch
 
 import bitsandbytes.functional as F
+from bitsandbytes.optim.rotation_state import (
+    ROTATION_DTYPES,
+    init_rotation_state,
+    update_rotation_step,
+)
 from bitsandbytes.utils import sync_gpu
 
 logger = logging.getLogger(__name__)
@@ -149,6 +154,7 @@ class Optimizer8bit(torch.optim.Optimizer):
             "absmax1",
             "absmax2",
             "unorm_vec",
+            "scale1",
         }
 
         if optim_bits == 8:
@@ -531,6 +537,14 @@ class Optimizer2State(Optimizer8bit):
         if config["max_unorm"] > 0.0:
             state["unorm_vec"] = torch.zeros((1,), device=p.device)
 
+        if config.get("rotation_lam") is not None:
+            if "dynamic" not in self.name2qmap:
+                self.fill_qmap()
+            self.name2qmap["dynamic"] = self.name2qmap["dynamic"].to(p.device)
+            self.name2qmap["udynamic"] = self.name2qmap["udynamic"].to(p.device)
+            state["qmap2"] = self.name2qmap["udynamic"]
+            init_rotation_state(state, p, config["rotation_lam"])
+
     @torch.no_grad()
     def update_step(self, group, p, gindex, pindex):
         # avoid update error from non-contiguous memory layout
@@ -587,6 +601,20 @@ class Optimizer2State(Optimizer8bit):
                 config["weight_decay"],
                 gnorm_scale=1.0,
                 skip_zeros=config["skip_zeros"],
+            )
+
+        elif state["state1"].dtype in ROTATION_DTYPES:
+            update_rotation_step(
+                state,
+                grad,
+                p,
+                config["betas"][0],
+                config["betas"][1],
+                config["eps"],
+                step,
+                config["lr"],
+                config["weight_decay"],
+                qmap2=state["qmap2"],
             )
 
 

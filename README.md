@@ -10,7 +10,7 @@
 
 `bitsandbytes` enables accessible large language models via k-bit quantization for PyTorch. We provide three main features for dramatically reducing memory consumption for inference and training:
 
-* 8-bit optimizers uses block-wise quantization to maintain 32-bit performance at a small fraction of the memory cost.
+* 8-bit optimizers uses block-wise quantization to maintain 32-bit performance at a small fraction of the memory cost. The first moment can additionally be rotation-coded for a smaller footprint, via `bnb.optim.GlobalOptimManager.get_instance().override_config(param, "rotation_lam", 2)` — adapted from [Irrational Complex Rotations Empower Low-bit Optimizers](https://arxiv.org/abs/2501.12896).
 * LLM.int8() or 8-bit quantization enables large language model inference with only half the required memory and without any performance degradation. This method is based on vector-wise quantization to quantize most features to 8-bits and separately treating outliers with 16-bit matrix multiplication.
 * QLoRA or 4-bit quantization enables large language model training with several memory-saving techniques that don't compromise performance. This method quantizes a model to 4-bits and inserts a small set of trainable low-rank adaptation (LoRA) weights to allow training.
 
