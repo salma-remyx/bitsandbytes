@@ -63,7 +63,14 @@ observed_landing_zones:
       AdamZ8bit, PagedAdamZ, PagedAdamZ8bit`), the same surface extern'
     branch: adamz-an-enhanced-optimisation-method-for-neural-network-tra
     timestamp: '2026-08-22T18:37:26Z'
-  last_observed: '2026-08-22T18:37:26Z'
+  - arxiv: 2501.12896v1
+    mode: Mode 2 (adapted port)
+    call_site_specifics: "bitsandbytes/optim/optimizer.py \u2014 Optimizer2State.init_state\
+      \ (line 546) and Optimizer2State.update_step (line 606), reached from the standard\
+      \ .step() path of Adam8bit/AdamW8bit when GlobalOptimManager"
+    branch: irrational-complex-rotations-empower-low-bit-optimizers
+    timestamp: '2026-08-23T04:00:19Z'
+  last_observed: '2026-08-23T04:00:19Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -72,4 +79,4 @@ rejected_shapes:
   - arxiv: 2608.09595v1
     timestamp: '2026-08-15T10:52:31Z'
 coordination_signals: []
-last_updated: '2026-08-22T18:37:26Z'
+last_updated: '2026-08-23T04:00:19Z'
