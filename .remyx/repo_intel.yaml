@@ -70,7 +70,12 @@ observed_landing_zones:
       \ .step() path of Adam8bit/AdamW8bit when GlobalOptimManager"
     branch: irrational-complex-rotations-empower-low-bit-optimizers
     timestamp: '2026-08-23T04:00:19Z'
-  last_observed: '2026-08-23T04:00:19Z'
+  - arxiv: 2402.02347v3
+    mode: ''
+    call_site_specifics: ''
+    branch: riemannian-preconditioned-lora-for-fine-tuning-foundation-mo
+    timestamp: '2026-08-24T00:07:17Z'
+  last_observed: '2026-08-24T00:07:17Z'
 rejected_shapes:
 - shape_tag: null
   reason_code: null
@@ -79,4 +84,4 @@ rejected_shapes:
   - arxiv: 2608.09595v1
     timestamp: '2026-08-15T10:52:31Z'
 coordination_signals: []
-last_updated: '2026-08-23T04:00:19Z'
+last_updated: '2026-08-24T00:07:17Z'
